@@ -1,38 +1,56 @@
-import React, { useEffect } from "react";
-//import { web3modal } from "./udmodal";
-import Web3Modal from "web3modal";
-const UD = () => {
-  const { connect, disconnect, isConnected, isLoading, address, error, user } =
-    new Web3Modal();
+import { useState } from "react"
+import connectors from "../components/connectors.js"
 
-  const handleConnect = async () => {
-    await connect();
-  };
+function Home() {
+  const connector = connectors["UAuth"][0]
 
-  const handleLogout = () => {
-    disconnect();
-  };
+  // Get web3-react hooks from UAuthConnector
+  const { useIsActivating, useIsActive } = connectors["UAuth"][1]
+  const isActivating = useIsActivating()
+  const isActive = useIsActive()
 
-  useEffect(() => {
-    if (error) {
-      alert(String(error));
+  const [connectionStatus, setConnectionStatus] = useState("Disconnected")
+  const [error, setError] = useState()
+
+  // Handle connector activation and update connection/error state
+  const handleToggleConnect = () => {
+    setError(undefined) // Clear error state
+
+    if (isActive) {
+      if (connector?.deactivate) {
+        void connector.deactivate()
+      } else {
+        void connector.resetState()
+      }
+      setConnectionStatus("Disconnected")
+    } else if (!isActivating) {
+      setConnectionStatus("Connecting...")
+
+      // Activate the connector and update states
+      connector
+        .activate(1)
+        .then(() => {
+          setConnectionStatus("Connected")
+        })
+        .catch(e => {
+          connector.resetState()
+          setError(e)
+        })
     }
-  }, [error]);
-
-  if (isLoading) {
-    return <>Loading...</>;
   }
 
-  if (isConnected) {
-    return (
-      <>
-        <div>Connected to {address}</div>
-        <button onClick={handleLogout}>Logout</button>
-      </>
-    );
-  }
+  return (
+    <>
+      <h1>Login with Unstoppable</h1>
+      <h3>
+        Status - {error?.message ? "Error: " + error.message : connectionStatus}
+      </h3>
 
-  return <button onClick={handleConnect}>Connect</button>;
-};
+      <button onClick={handleToggleConnect} disabled={false}>
+        {isActive ? "Disconnect" : "Connect"}
+      </button>
+    </>
+  )
+}
 
-export default UD;
+export default Home
